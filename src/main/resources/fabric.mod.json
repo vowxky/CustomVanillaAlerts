@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "customvanillaalerts",
+  "version": "${version}",
+  "name": "CustomVanillaAlerts",
+  "description": "",
+  "authors": [
+    "Vowxky"
+  ],
+  "contact": {
+    "repo": "https://github.com/vowxky/CustomVanillaAlerts"
+  },
+  "license": "MIT",
+  "icon": "assets/customvanillaalerts/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "vowxky.customvanillaalerts.client.CustomVanillaAlertsClient"
+    ],
+    "main": [
+      "vowxky.customvanillaalerts.CustomVanillaAlerts"
+    ]
+  },
+  "mixins": [
+    "customvanillaalerts.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
