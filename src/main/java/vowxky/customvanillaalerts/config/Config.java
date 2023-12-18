@@ -34,7 +34,7 @@ public class Config {
                 file.createNewFile();
                 setDefaultConfigValues();
             } catch (IOException e) {
-                throw new RuntimeException("Error creando el archivo JSON", e);
+                throw new RuntimeException("Error creating JSON file", e);
             }
         } else {
             try (FileReader fileReader = new FileReader(file);
@@ -52,7 +52,7 @@ public class Config {
                     Map<String, Object> finalConfigMap = gson.fromJson(jsonData.toString(), Map.class);
 
                     if (finalConfigMap == null) {
-                        throw new RuntimeException("El archivo JSON está vacío o tiene un formato incorrecto.");
+                        throw new RuntimeException("The JSON file is empty or malformed.");
                     }
 
                     Map<String, Object> booleanConfigMap = (Map<String, Object>) finalConfigMap.getOrDefault("booleanConfig", new HashMap<>());
@@ -66,12 +66,12 @@ public class Config {
                     joinMessages = (List<Map<String, Object>>) listConfigMap.getOrDefault("joinMessages", new ArrayList<>());
 
                 } catch (Exception e) {
-                    throw new RuntimeException("Error al convertir el JSON a mapa", e);
+                    throw new RuntimeException("Error converting JSON to map", e);
                 }
 
 
             } catch (IOException e) {
-                throw new RuntimeException("Error leyendo el archivo JSON", e);
+                throw new RuntimeException("Error reading JSON file", e);
             }
         }
     }
@@ -100,7 +100,7 @@ public class Config {
             bufferedWriter.write(jsonData);
 
         } catch (IOException e) {
-            throw new RuntimeException("Error escribiendo en el archivo JSON", e);
+            throw new RuntimeException("Error writing to JSON file", e);
         }
     }
 
@@ -303,11 +303,11 @@ public class Config {
     private void setDefaultConfigValues() {
         List<Map<String, Object>> deathMessageWords = Arrays.asList(
                 createWord("%player%", "red", List.of("bold")),
-                createWord("ha", null, null),
-                createWord("sucumbido", null, null),
-                createWord("en", null, null),
-                createWord("la", null, null),
-                createWord("batalla...", null, null)
+                createWord("has", null, null),
+                createWord("succumbed", null, null),
+                createWord("in", null, null),
+                createWord("the", null, null),
+                createWord("battle...", null, null)
         );
 
         List<Map<String, Object>> deathMessage = Collections.singletonList(
@@ -316,9 +316,9 @@ public class Config {
 
         List<Map<String, Object>> disconnectMessageWords = Arrays.asList(
                 createWord("%player%", "gray", null),
-                createWord("ha", null, null),
-                createWord("perdido", null, null),
-                createWord("conexión...", null, null)
+                createWord("has", null, null),
+                createWord("lost", null, null),
+                createWord("connection...", null, null)
         );
 
         List<Map<String, Object>> disconnectMessage = Collections.singletonList(
@@ -327,11 +327,10 @@ public class Config {
 
         List<Map<String, Object>> joinMessageWords = Arrays.asList(
                 createWord("%player%", "green", null),
-                createWord("se", null, null),
-                createWord("ha", null, null),
-                createWord("unido", null, null),
-                createWord("al", null, null),
-                createWord("juego.", null, null)
+                createWord("has", null, null),
+                createWord("joined", null, null),
+                createWord("the", null, null),
+                createWord("game.", null, null)
         );
 
         List<Map<String, Object>> joinMessage = Collections.singletonList(

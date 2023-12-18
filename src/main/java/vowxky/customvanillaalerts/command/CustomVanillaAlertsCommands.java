@@ -21,6 +21,12 @@ import java.util.Map;
 public class CustomVanillaAlertsCommands {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
         dispatcher.register(CommandManager.literal("cva").requires(source -> source.hasPermissionLevel(2))
+                        .then(CommandManager.literal("config")
+                                .then(CommandManager.literal("reload")
+                                        .executes(//crea un metodo para esto)
+                                )
+                        )
+
                 .then(CommandManager.literal("changeVisibility")
                         .then(CommandManager.argument("visibility" , BoolArgumentType.bool())
                                 .then(CommandManager.literal("DeathMessages")
@@ -89,6 +95,12 @@ public class CustomVanillaAlertsCommands {
                         )
                 )
         );
+    }
+
+    private static int reload(CommandContext<ServerCommandSource> context) {
+        CustomVanillaAlerts.getConfig().load();
+        context.getSource().sendFeedback(Text.of("The config was reloaded") , false);
+        return 1;
     }
 
     private static int changeVisibility(CommandContext<ServerCommandSource> context, String configKey) {
