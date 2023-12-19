@@ -300,7 +300,7 @@ public class Config {
                 .collect(Collectors.toList());
     }
 
-    private void setDefaultConfigValues() {
+    public void setDefaultConfigValues() {
         List<Map<String, Object>> deathMessageWords = Arrays.asList(
                 createWord("%player%", "red", List.of("bold")),
                 createWord("has", null, null),

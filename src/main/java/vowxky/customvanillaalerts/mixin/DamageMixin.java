@@ -15,6 +15,7 @@ import vowxky.customvanillaalerts.util.MessageBuilder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Mixin(DamageTracker.class)
 public class DamageMixin {
@@ -22,16 +23,21 @@ public class DamageMixin {
     @Final
     private LivingEntity entity;
 
-    @Inject(method = "getDeathMessage", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getDeathMessage", at = @At("RETURN"), cancellable = true)
     private void onGetDeathMessage(CallbackInfoReturnable<Text> cir) {
         Config config = CustomVanillaAlerts.getConfig();
         List<Map<String, Object>> deathMessages = config.getDeathMessages();
         boolean isEnabled = config.isEnabledDeathMessages();
         MutableText message;
         if (isEnabled && deathMessages != null && !deathMessages.isEmpty()) {
-                Map<String, Object> selectedMessage = MessageBuilder.getRandomMessage(deathMessages);
-                message = MessageBuilder.buildMessage(selectedMessage, entity.getEntityName(), entity.getDamageTracker().getDeathMessage().getString());
-                cir.setReturnValue(message);
+            Map<String, Object> selectedMessage = MessageBuilder.getRandomMessage(deathMessages);
+
+            Text deathMessage = Objects.requireNonNull(entity.getDamageTracker().getMostRecentDamage()).getDamageSource().getDeathMessage(entity);
+
+            String deathReason = deathMessage.getString().replace(entity.getDisplayName().getString() + " ", "");
+
+            message = MessageBuilder.buildMessage(selectedMessage, entity.getEntityName(), deathReason);
+            cir.setReturnValue(message);
         }
     }
 }

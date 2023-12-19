@@ -12,6 +12,7 @@ import vowxky.customvanillaalerts.command.suggestion.SugestionWordTypes;
 import vowxky.customvanillaalerts.command.suggestion.SuggestionIdConfig;
 import vowxky.customvanillaalerts.command.suggestion.SuggestionMessageType;
 import vowxky.customvanillaalerts.command.suggestion.SuggestionWord;
+import vowxky.customvanillaalerts.config.Config;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +24,11 @@ public class CustomVanillaAlertsCommands {
         dispatcher.register(CommandManager.literal("cva").requires(source -> source.hasPermissionLevel(2))
                         .then(CommandManager.literal("config")
                                 .then(CommandManager.literal("reload")
-                                        .executes(//crea un metodo para esto)
+                                        .executes(CustomVanillaAlertsCommands::reload)
+                                )
+
+                                .then(CommandManager.literal("restore")
+                                        .executes(CustomVanillaAlertsCommands::restoreConfig)
                                 )
                         )
 
@@ -38,7 +43,6 @@ public class CustomVanillaAlertsCommands {
                         )
                 )
 
-                .then(CommandManager.literal("messages")
                         .then(CommandManager.literal("words")
                                 .then(CommandManager.literal("addWords")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
@@ -93,13 +97,21 @@ public class CustomVanillaAlertsCommands {
                                 )
 
                         )
-                )
         );
     }
 
     private static int reload(CommandContext<ServerCommandSource> context) {
         CustomVanillaAlerts.getConfig().load();
         context.getSource().sendFeedback(Text.of("The config was reloaded") , false);
+        return 1;
+    }
+
+    private static int restoreConfig(CommandContext<ServerCommandSource> context) {
+        Config config = CustomVanillaAlerts.getConfig();
+        config.setDefaultConfigValues();
+        config.load();
+        context.getSource().sendFeedback(Text.of("Config restored to default values."), true);
+
         return 1;
     }
 
