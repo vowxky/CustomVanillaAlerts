@@ -51,7 +51,7 @@ public class SugestionWordTypes implements SuggestionProvider<ServerCommandSourc
 
     private CompletableFuture<Suggestions> suggestStyles(SuggestionsBuilder builder) {
         List<String> styleSuggestions = Arrays.asList(
-                "bold", "italic", "underline", "strikethrough", "obfuscated"
+                "bold", "italic", "underline", "strikethrough", "obfuscated", "none"
         );
 
         return suggestMatchingStrings(builder, styleSuggestions);

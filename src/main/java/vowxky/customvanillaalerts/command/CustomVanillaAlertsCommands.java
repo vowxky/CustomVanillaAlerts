@@ -16,12 +16,15 @@ import vowxky.customvanillaalerts.config.Config;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 
 public class CustomVanillaAlertsCommands {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
-        dispatcher.register(CommandManager.literal("cva").requires(source -> source.hasPermissionLevel(2))
+        dispatcher.register(
+                CommandManager.literal("cva").requires(source -> source.hasPermissionLevel(2))
+
                         .then(CommandManager.literal("config")
                                 .then(CommandManager.literal("reload")
                                         .executes(CustomVanillaAlertsCommands::reload)
@@ -32,16 +35,19 @@ public class CustomVanillaAlertsCommands {
                                 )
                         )
 
-                .then(CommandManager.literal("changeVisibility")
-                        .then(CommandManager.argument("visibility" , BoolArgumentType.bool())
-                                .then(CommandManager.literal("DeathMessages")
-                                        .executes(context -> changeVisibility(context, "death")))
-                                .then(CommandManager.literal("DisconnectMessages")
-                                        .executes(context -> changeVisibility(context, "disconnect")))
-                                .then(CommandManager.literal("JoinMessages")
-                                        .executes(context -> changeVisibility(context, "join")))
+                        .then(CommandManager.literal("changeVisibility")
+                                .then(CommandManager.argument("visibility", BoolArgumentType.bool())
+                                        .then(CommandManager.literal("DeathMessages")
+                                                .executes(context -> changeVisibility(context, "death"))
+                                        )
+                                        .then(CommandManager.literal("DisconnectMessages")
+                                                .executes(context -> changeVisibility(context, "disconnect"))
+                                        )
+                                        .then(CommandManager.literal("JoinMessages")
+                                                .executes(context -> changeVisibility(context, "join"))
+                                        )
+                                )
                         )
-                )
 
                         .then(CommandManager.literal("words")
                                 .then(CommandManager.literal("addWords")
@@ -62,7 +68,6 @@ public class CustomVanillaAlertsCommands {
                                                 )
                                         )
                                 )
-
                                 .then(CommandManager.literal("removeWords")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
                                                 .suggests(new SuggestionMessageType())
@@ -95,7 +100,6 @@ public class CustomVanillaAlertsCommands {
                                                 )
                                         )
                                 )
-
                         )
         );
     }
@@ -171,7 +175,13 @@ public class CustomVanillaAlertsCommands {
 
         content = content.replace("player", "%player%");
 
-        Map<String, Object> word = CustomVanillaAlerts.getConfig().createWord(content, color, Collections.singletonList(style));
+        List<String> styles = null;
+
+        if (!style.equalsIgnoreCase("none")) {
+            styles = Collections.singletonList(style);
+        }
+
+        Map<String, Object> word = CustomVanillaAlerts.getConfig().createWord(content, color, styles);
 
         switch (messageType.toLowerCase()) {
             case "death":
@@ -191,6 +201,7 @@ public class CustomVanillaAlertsCommands {
         context.getSource().sendFeedback(Text.of("Word added to message " + messageId), false);
         return 1;
     }
+
     private static int deleteMessage(CommandContext<ServerCommandSource> context) {
         String messageType = StringArgumentType.getString(context, "messageType");
         String messageId = StringArgumentType.getString(context, "messageId");
