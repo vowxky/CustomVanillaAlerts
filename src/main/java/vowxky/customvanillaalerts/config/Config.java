@@ -2,349 +2,238 @@ package vowxky.customvanillaalerts.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.fabricmc.loader.api.FabricLoader;
+import vowxky.customvanillaalerts.CustomVanillaAlerts;
 
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class Config {
-    private final String configFilePath;
-    private boolean enabledDeathMessages = false;
-    private boolean enabledDisconnectMessages = false;
-    private boolean enabledJoinMessages = false;
 
-    private List<Map<String, Object>> deathMessages = new ArrayList<>();
-    private List<Map<String, Object>> disconnectMessages = new ArrayList<>();
-    private List<Map<String, Object>> joinMessages = new ArrayList<>();
+    private boolean initialized = false;
+    private File configFile;
+    private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private ConfigData data;
 
-    public Config(String fileName, String modId) {
-        File configDir = new File("config");
-        configDir.mkdirs();
-
-        File modDir = new File(configDir, modId);
-        modDir.mkdirs();
-
-        this.configFilePath = new File(configDir, modId + "/" + fileName).getAbsolutePath();
+    private Config() {
     }
 
-    public void load() {
-        File file = new File(configFilePath);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-                setDefaultConfigValues();
-            } catch (IOException e) {
-                throw new RuntimeException("Error creating JSON file", e);
-            }
-        } else {
-            try (FileReader fileReader = new FileReader(file);
-                 BufferedReader bufferedReader = new BufferedReader(fileReader)) {
+    private static class SingletonHolder {
+        private static final Config INSTANCE = new Config();
+    }
 
-                String line;
-                StringBuilder jsonData = new StringBuilder();
+    public static Config getInstance() {
+        return SingletonHolder.INSTANCE;
+    }
 
-                while ((line = bufferedReader.readLine()) != null) {
-                    jsonData.append(line);
-                }
-
-                Gson gson = new Gson();
-                try {
-                    Map<String, Object> finalConfigMap = gson.fromJson(jsonData.toString(), Map.class);
-
-                    if (finalConfigMap == null) {
-                        throw new RuntimeException("The JSON file is empty or malformed.");
-                    }
-
-                    Map<String, Object> booleanConfigMap = (Map<String, Object>) finalConfigMap.getOrDefault("booleanConfig", new HashMap<>());
-                    enabledDeathMessages = (Boolean) booleanConfigMap.getOrDefault("enabledDeathMessages", false);
-                    enabledDisconnectMessages = (Boolean) booleanConfigMap.getOrDefault("enabledDisconnectMessages", false);
-                    enabledJoinMessages = (Boolean) booleanConfigMap.getOrDefault("enabledJoinMessages", false);
-
-                    Map<String, Object> listConfigMap = (Map<String, Object>) finalConfigMap.getOrDefault("listConfig", new HashMap<>());
-                    deathMessages = (List<Map<String, Object>>) listConfigMap.getOrDefault("deathMessages", new ArrayList<>());
-                    disconnectMessages = (List<Map<String, Object>>) listConfigMap.getOrDefault("disconnectMessages", new ArrayList<>());
-                    joinMessages = (List<Map<String, Object>>) listConfigMap.getOrDefault("joinMessages", new ArrayList<>());
-
-                } catch (Exception e) {
-                    throw new RuntimeException("Error converting JSON to map", e);
-                }
-
-
-            } catch (IOException e) {
-                throw new RuntimeException("Error reading JSON file", e);
-            }
+    public void init() {
+        if (initialized) return;
+        initialized = true;
+        configFile = FabricLoader.getInstance().getConfigDir().resolve("cva.json").toFile();
+        if (!configFile.exists()) {
+            data = new ConfigData();
+            saveConfig();
+            return;
         }
+        loadConfig();
     }
 
-    public void save() {
-        try (FileWriter fileWriter = new FileWriter(configFilePath);
-             BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
-
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
-            Map<String, Object> booleanConfigMap = new HashMap<>();
-            booleanConfigMap.put("enabledDeathMessages", enabledDeathMessages);
-            booleanConfigMap.put("enabledDisconnectMessages", enabledDisconnectMessages);
-            booleanConfigMap.put("enabledJoinMessages", enabledJoinMessages);
-
-            Map<String, Object> listConfigMap = new HashMap<>();
-            listConfigMap.put("deathMessages", deathMessages);
-            listConfigMap.put("disconnectMessages", disconnectMessages);
-            listConfigMap.put("joinMessages", joinMessages);
-
-            Map<String, Object> finalConfigMap = new HashMap<>();
-            finalConfigMap.put("booleanConfig", booleanConfigMap);
-            finalConfigMap.put("listConfig", listConfigMap);
-
-            String jsonData = gson.toJson(finalConfigMap);
-            bufferedWriter.write(jsonData);
-
+    public void loadConfig() {
+        try (FileReader reader = new FileReader(configFile)) {
+            data = gson.fromJson(reader, ConfigData.class);
         } catch (IOException e) {
-            throw new RuntimeException("Error writing to JSON file", e);
+            CustomVanillaAlerts.LOGGER.error("Error loading the config " + e);
+            data = new ConfigData();
         }
     }
 
-    public boolean isEnabledDeathMessages() {
-        return enabledDeathMessages;
-    }
-
-    public void setEnabledDeathMessages(boolean enabledDeathMessages) {
-        this.enabledDeathMessages = enabledDeathMessages;
-        save();
-    }
-
-    public boolean isEnabledDisconnectMessages() {
-        return enabledDisconnectMessages;
-    }
-
-    public void setEnabledDisconnectMessages(boolean enabledDisconnectMessages) {
-        this.enabledDisconnectMessages = enabledDisconnectMessages;
-        save();
-    }
-
-    public boolean isEnabledJoinMessages() {
-        return enabledJoinMessages;
-    }
-
-    public void setEnabledJoinMessages(boolean enabledJoinMessages) {
-        this.enabledJoinMessages = enabledJoinMessages;
-        save();
-    }
-
-    public List<Map<String, Object>> getDeathMessages() {
-        return deathMessages;
-    }
-
-    public List<Map<String, Object>> getDisconnectMessages() {
-        return disconnectMessages;
-    }
-
-    public List<Map<String, Object>> getJoinMessages() {
-        return joinMessages;
-    }
-
-    public Map<String, Object> createWord(String content, String color, List<String> style) {
-        Map<String, Object> wordMap = new HashMap<>();
-        wordMap.put("content", content);
-        if (color != null) {
-            wordMap.put("color", color);
-        }
-        if (style != null) {
-            wordMap.put("style", style);
-        }
-        return wordMap;
-    }
-
-    public Map<String, Object> createMessage(String id, List<Map<String, Object>> words) {
-        Map<String, Object> message = new HashMap<>();
-        message.put("id", id);
-        message.put("words", words);
-        return message;
-    }
-
-    public void addWordToDeathMessage(String messageId, Map<String, Object> word) {
-        addWordToMessage(deathMessages, messageId, word);
-    }
-
-    public void addWordToDisconnectMessage(String messageId, Map<String, Object> word) {
-        addWordToMessage(disconnectMessages, messageId, word);
-    }
-
-    public void addWordToJoinMessage(String messageId, Map<String, Object> word) {
-        addWordToMessage(joinMessages, messageId, word);
-    }
-
-    public void createDeathMessage(String messageId, List<Map<String, Object>> words) {
-        createMessage(deathMessages, messageId, words);
-    }
-
-    public void createDisconnectMessage(String messageId, List<Map<String, Object>> words) {
-        createMessage(disconnectMessages, messageId, words);
-    }
-
-    public void createJoinMessage(String messageId, List<Map<String, Object>> words) {
-        createMessage(joinMessages, messageId, words);
-    }
-
-    private void addWordToMessage(List<Map<String, Object>> messages, String messageId, Map<String, Object> word) {
-        for (Map<String, Object> message : messages) {
-            if (messageId.equals(message.get("id"))) {
-                List<Map<String, Object>> words = (List<Map<String, Object>>) message.get("words");
-                words.add(word);
-                save();
-                return;
-            }
+    public void saveConfig() {
+        try (FileWriter fileWriter = new FileWriter(configFile)) {
+            gson.toJson(data, fileWriter);
+        } catch (IOException e) {
+            CustomVanillaAlerts.LOGGER.error("Error saving the config " + e);
         }
     }
 
-    private void createMessage(List<Map<String, Object>> messages, String messageId, List<Map<String, Object>> words) {
-        Map<String, Object> newMessage = createMessage(messageId, words);
-        messages.add(newMessage);
-        save();
+    public void setEnabled(String key, boolean value) {
+        data.setEnabled(key, value);
+        saveConfig();
     }
 
-    public void removeWordFromDeathMessage(String messageId, String content) {
-        removeWordFromMessage(deathMessages, messageId, content);
+    public boolean isEnabled(String key) {
+        return data.isEnabled(key);
     }
 
-    public void removeWordFromDisconnectMessage(String messageId, String content) {
-        removeWordFromMessage(disconnectMessages, messageId, content);
+    public void editWord(String messageType, String messageId, int wordIndex, String newContent, String newColor, List<String> newStyle) {
+        data.editWord(messageType, messageId, wordIndex, newContent, newColor, newStyle);
+        saveConfig();
     }
 
-    public void removeWordFromJoinMessage(String messageId, String content) {
-        removeWordFromMessage(joinMessages, messageId, content);
+    public void addWordToMessageList(String messageType, String messageId, String content, String color, List<String> style) {
+        data.addWordToMessageList(messageType, messageId, content, color, style);
+        saveConfig();
     }
 
-    public void deleteDeathMessage(String messageId) {
-        deleteMessage(deathMessages, messageId);
+    public void addMessage(String messageType, String messageId) {
+        data.addMessage(messageType, messageId);
+        saveConfig();
     }
 
-    public void deleteDisconnectMessage(String messageId) {
-        deleteMessage(disconnectMessages, messageId);
+    public void deleteMessage(String messageType, String messageId) {
+        data.deleteMessage(messageType, messageId);
+        saveConfig();
     }
 
-    public void deleteJoinMessage(String messageId) {
-        deleteMessage(joinMessages, messageId);
+    public void removeWord(String messageType, String messageId, int wordIndex) {
+        data.removeWord(messageType, messageId, wordIndex);
+        saveConfig();
     }
 
-    public void removeWordFromMessage(List<Map<String, Object>> messages, String messageId, String wordContent) {
-        for (Map<String, Object> message : messages) {
-            if (messageId.equals(message.get("id"))) {
-                List<Map<String, Object>> words = (List<Map<String, Object>>) message.get("words");
-                for (int i = 0; i < words.size(); i++) {
-                    Map<String, Object> word = words.get(i);
-                    String content = (String) word.get("content");
-                    if (wordContent.equals(content)) {
-                        words.remove(i);
-                        save();
-                        return;
+    public List<Word> getWordsByTypeAndId(String messageType, String messageId) {
+        loadConfig();
+        return data.getWordsByTypeAndId(messageType, messageId);
+    }
+
+    public List<String> getMessageIdsByType(String messageType) {
+        loadConfig();
+        return data.getMessageIdsByType(messageType);
+    }
+
+    public List<Map<String, Object>> getMessagesByType(String messageType) {
+        loadConfig();
+        return data.getMessagesByType(messageType);
+    }
+
+    public void restoreDefaultConfig() {
+        data = new ConfigData();
+        saveConfig();
+    }
+}
+
+class ConfigData {
+    private final Map<String, Boolean> enabledMessages = new HashMap<>();
+    private final Map<String, List<Message>> listMessages = new HashMap<>();
+
+    public ConfigData() {
+        setDefaultEnabledMessages();
+        setDefaultMessages();
+    }
+
+    private void setDefaultEnabledMessages() {
+        enabledMessages.put("death", true);
+        enabledMessages.put("disconnect", true);
+        enabledMessages.put("join", true);
+        enabledMessages.put("advancements", true);
+    }
+
+    private void setDefaultMessages() {
+        listMessages.put("disconnect", Arrays.asList(
+                new Message("disconnectMessage", Arrays.asList(
+                        new Word("gray", null, "%player%"),
+                        new Word(null, null, "has"),
+                        new Word(null, null, "lost"),
+                        new Word(null, null, "connection...")))));
+
+        listMessages.put("death", Arrays.asList(
+                new Message("deathMessage", Arrays.asList(
+                        new Word("red", Collections.singletonList("bold"), "%player%"),
+                        new Word(null, null, "has"),
+                        new Word(null, null, "succumbed"),
+                        new Word(null, null, "in"),
+                        new Word(null, null, "the"),
+                        new Word(null, null, "battle...")))));
+
+        listMessages.put("advancement", Arrays.asList(
+                new Message("advancementMessage", Arrays.asList(
+                        new Word("green", null, "%player%"),
+                        new Word(null, null, "got"),
+                        new Word(null, null, "the"),
+                        new Word(null, null, "advancement"),
+                        new Word("aqua", Collections.singletonList("bold"), "%advancement%")))));
+
+        listMessages.put("join", Arrays.asList(
+                new Message("joinMessage", Arrays.asList(
+                        new Word("green", null, "%player%"),
+                        new Word(null, null, "has"),
+                        new Word(null, null, "joined"),
+                        new Word(null, null, "the"),
+                        new Word(null, null, "game.")))));
+    }
+
+    public void setEnabled(String key, boolean value) {
+        validateKey(key);
+        enabledMessages.put(key, value);
+    }
+
+    public boolean isEnabled(String key) {
+        return enabledMessages.getOrDefault(key, true);
+    }
+
+    public void editWord(String messageType, String messageId, int wordIndex, String newContent, String newColor, List<String> newStyles) {
+        getMessageByTypeAndId(messageType, messageId)
+                .ifPresent(message -> message.editWord(wordIndex, newContent, newColor, newStyles));
+    }
+
+    public void removeWord(String messageType, String messageId, int wordIndex) {
+        getMessageByTypeAndId(messageType, messageId)
+                .ifPresent(message -> {
+                    List<Word> words = new ArrayList<>(message.getWords());
+                    if (wordIndex >= 0 && wordIndex < words.size()) {
+                        words.remove(wordIndex);
+                        message.setWords(words);
+                    } else {
+                        System.out.println("Invalid word index: " + wordIndex);
                     }
-                }
-                throw new RuntimeException("Word not found: " + wordContent);
-            }
-        }
+                });
     }
 
-    public List<String> getWordsByTypeAndId(String messageType, String messageId) {
-        List<Map<String, Object>> messages;
-        switch (messageType.toLowerCase()) {
-            case "death":
-                messages = deathMessages;
-                break;
-            case "disconnect":
-                messages = disconnectMessages;
-                break;
-            case "join":
-                messages = joinMessages;
-                break;
-            default:
-                return Collections.emptyList();
-        }
-
-        Optional<Map<String, Object>> optionalMessage = messages.stream()
-                .filter(message -> messageId.equals(message.get("id")))
-                .findFirst();
-
-        return optionalMessage.map(message -> {
-            List<Map<String, Object>> words = (List<Map<String, Object>>) message.get("words");
-            return words.stream()
-                    .map(word -> (String) word.get("content"))
-                    .collect(Collectors.toList());
-        }).orElse(Collections.emptyList());
+    public void addWordToMessageList(String messageType, String messageId, String content, String color, List<String> style) {
+        getMessageByTypeAndId(messageType, messageId)
+                .ifPresent(message -> message.addWord(new Word(color, style, content)));
     }
 
-    private void deleteMessage(List<Map<String, Object>> messages, String messageId) {
-        messages.removeIf(message -> messageId.equals(message.get("id")));
-        save();
+    public void addMessage(String messageType, String messageId) {
+        listMessages.computeIfAbsent(messageType, k -> new ArrayList<>()).add(new Message(messageId, new ArrayList<>()));
     }
 
-    public List<String> getDeathMessageIds() {
-        return getMessageIds(deathMessages);
+    public void deleteMessage(String messageType, String messageId) {
+        listMessages.computeIfPresent(messageType, (k, v) -> {
+            v.removeIf(message -> message.getId().equals(messageId));
+            return v;
+        });
     }
 
-    public List<String> getDisconnectMessageIds() {
-        return getMessageIds(disconnectMessages);
+    public List<Word> getWordsByTypeAndId(String messageType, String messageId) {
+        return getMessageByTypeAndId(messageType, messageId)
+                .map(Message::getWords)
+                .orElse(Collections.emptyList());
     }
 
-    public List<String> getJoinMessageIds() {
-        return getMessageIds(joinMessages);
-    }
-
-    private List<String> getMessageIds(List<Map<String, Object>> messages) {
-        return messages.stream()
-                .map(message -> {
-                    Object messageId = message.get("id");
-                    return messageId != null ? messageId.toString() : null;
-                })
-                .filter(Objects::nonNull)
+    public List<String> getMessageIdsByType(String messageType) {
+        return listMessages.getOrDefault(messageType, Collections.emptyList())
+                .stream()
+                .map(Message::getId)
                 .collect(Collectors.toList());
     }
 
-    public void setDefaultConfigValues() {
-        List<Map<String, Object>> deathMessageWords = Arrays.asList(
-                createWord("%player%", "red", List.of("bold")),
-                createWord("has", null, null),
-                createWord("succumbed", null, null),
-                createWord("in", null, null),
-                createWord("the", null, null),
-                createWord("battle...", null, null)
-        );
+    public List<Map<String, Object>> getMessagesByType(String messageType) {
+        return listMessages.getOrDefault(messageType, Collections.emptyList())
+                .stream()
+                .map(Message::toMap)
+                .collect(Collectors.toList());
+    }
 
-        List<Map<String, Object>> deathMessage = Collections.singletonList(
-                createMessage("deathMessage1", deathMessageWords)
-        );
+    private Optional<Message> getMessageByTypeAndId(String messageType, String messageId) {
+        return listMessages.getOrDefault(messageType, Collections.emptyList())
+                .stream()
+                .filter(m -> m.getId().equals(messageId))
+                .findFirst();
+    }
 
-        List<Map<String, Object>> disconnectMessageWords = Arrays.asList(
-                createWord("%player%", "gray", null),
-                createWord("has", null, null),
-                createWord("lost", null, null),
-                createWord("connection...", null, null)
-        );
-
-        List<Map<String, Object>> disconnectMessage = Collections.singletonList(
-                createMessage("disconnectMessage1", disconnectMessageWords)
-        );
-
-        List<Map<String, Object>> joinMessageWords = Arrays.asList(
-                createWord("%player%", "green", null),
-                createWord("has", null, null),
-                createWord("joined", null, null),
-                createWord("the", null, null),
-                createWord("game.", null, null)
-        );
-
-        List<Map<String, Object>> joinMessage = Collections.singletonList(
-                createMessage("joinMessage1", joinMessageWords)
-        );
-
-        enabledDeathMessages = true;
-        enabledDisconnectMessages = true;
-        enabledJoinMessages = true;
-
-        deathMessages = deathMessage;
-        disconnectMessages = disconnectMessage;
-        joinMessages = joinMessage;
-
-        save();
+    private void validateKey(String key) {
+        if (!enabledMessages.containsKey(key)) {
+            throw new IllegalArgumentException("Invalid key: " + key);
+        }
     }
 }

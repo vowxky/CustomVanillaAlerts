@@ -9,8 +9,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import vowxky.customvanillaalerts.CustomVanillaAlerts;
 import vowxky.customvanillaalerts.config.Config;
+import vowxky.customvanillaalerts.util.EventsType;
 import vowxky.customvanillaalerts.util.MessageBuilder;
 
 import java.util.List;
@@ -25,18 +25,17 @@ public class DamageMixin {
 
     @Inject(method = "getDeathMessage", at = @At("RETURN"), cancellable = true)
     private void onGetDeathMessage(CallbackInfoReturnable<Text> cir) {
-        Config config = CustomVanillaAlerts.getConfig();
-        List<Map<String, Object>> deathMessages = config.getDeathMessages();
-        boolean isEnabled = config.isEnabledDeathMessages();
+        List<Map<String, Object>> messages = Config.getInstance().getMessagesByType(EventsType.DEATH.name().toLowerCase());
+        boolean isEnabled = Config.getInstance().isEnabled(EventsType.DEATH.name().toLowerCase());
         MutableText message;
-        if (isEnabled && deathMessages != null && !deathMessages.isEmpty()) {
-            Map<String, Object> selectedMessage = MessageBuilder.getRandomMessage(deathMessages);
+        if (isEnabled && messages != null && !messages.isEmpty()) {
+            Map<String, Object> selectedMessage = MessageBuilder.getRandomMessage(messages);
 
             Text deathMessage = Objects.requireNonNull(entity.getDamageTracker().getMostRecentDamage()).getDamageSource().getDeathMessage(entity);
 
             String deathReason = deathMessage.getString().replace(entity.getDisplayName().getString() + " ", "");
 
-            message = MessageBuilder.buildMessage(selectedMessage, entity.getEntityName(), deathReason);
+            message = MessageBuilder.buildMessage(selectedMessage, entity.getEntityName(), deathReason , null);
             cir.setReturnValue(message);
         }
     }

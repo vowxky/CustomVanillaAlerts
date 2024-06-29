@@ -4,6 +4,7 @@
   "package": "vowxky.customvanillaalerts.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "AdvancementTrackerMixin",
     "ConnectionMixin",
     "DamageMixin",
     "ServerPlayNetworkHandlerMixin"

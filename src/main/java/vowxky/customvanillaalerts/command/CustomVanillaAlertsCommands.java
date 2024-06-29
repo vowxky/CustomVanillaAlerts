@@ -2,8 +2,10 @@ package vowxky.customvanillaalerts.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.IntegerSuggestion;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
@@ -37,45 +39,68 @@ public class CustomVanillaAlertsCommands {
 
                         .then(CommandManager.literal("changeVisibility")
                                 .then(CommandManager.argument("visibility", BoolArgumentType.bool())
-                                        .then(CommandManager.literal("DeathMessages")
+                                        .then(CommandManager.literal("Death")
                                                 .executes(context -> changeVisibility(context, "death"))
                                         )
-                                        .then(CommandManager.literal("DisconnectMessages")
+                                        .then(CommandManager.literal("Disconnect")
                                                 .executes(context -> changeVisibility(context, "disconnect"))
                                         )
-                                        .then(CommandManager.literal("JoinMessages")
+                                        .then(CommandManager.literal("Join")
                                                 .executes(context -> changeVisibility(context, "join"))
                                         )
+                                        .then(CommandManager.literal("Advancement")
+                                                .executes(context -> changeVisibility(context, "advancements")))
                                 )
                         )
 
                         .then(CommandManager.literal("words")
-                                .then(CommandManager.literal("addWords")
+                                .then(CommandManager.literal("add")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
                                                 .suggests(new SuggestionMessageType())
                                                 .then(CommandManager.argument("messageId", StringArgumentType.string())
                                                         .suggests(new SuggestionIdConfig())
                                                         .then(CommandManager.argument("content", StringArgumentType.string())
-                                                                .suggests(new SugestionWordTypes(SugestionWordTypes.Type.VARIABLES))
                                                                 .then(CommandManager.argument("color", StringArgumentType.string())
                                                                         .suggests(new SugestionWordTypes(SugestionWordTypes.Type.COLORS))
                                                                         .then(CommandManager.argument("style", StringArgumentType.string())
                                                                                 .suggests(new SugestionWordTypes(SugestionWordTypes.Type.STYLES))
-                                                                                .executes(CustomVanillaAlertsCommands::addWords)
+                                                                                .executes(CustomVanillaAlertsCommands::executeAddWords)
                                                                         )
                                                                 )
                                                         )
                                                 )
                                         )
                                 )
-                                .then(CommandManager.literal("removeWords")
+
+                                .then(CommandManager.literal("remove")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
                                                 .suggests(new SuggestionMessageType())
                                                 .then(CommandManager.argument("messageId", StringArgumentType.string())
                                                         .suggests(new SuggestionIdConfig())
-                                                        .then(CommandManager.argument("contentWord", StringArgumentType.string())
+                                                        .then(CommandManager.argument("wordIndex", IntegerArgumentType.integer())
                                                                 .suggests(new SuggestionWord())
-                                                                .executes(CustomVanillaAlertsCommands::removeWords)
+                                                                .executes(CustomVanillaAlertsCommands::executeRemoveWords)
+                                                        )
+                                                )
+                                        )
+                                )
+
+                                .then(CommandManager.literal("edit")
+                                        .then(CommandManager.argument("messageType", StringArgumentType.string())
+                                                .suggests(new SuggestionMessageType())
+                                                .then(CommandManager.argument("messageId", StringArgumentType.string())
+                                                        .suggests(new SuggestionIdConfig())
+                                                        .then(CommandManager.argument("oldWordIndex", IntegerArgumentType.integer())
+                                                                .suggests(new SuggestionWord())
+                                                                .then(CommandManager.argument("newContent", StringArgumentType.string())
+                                                                        .then(CommandManager.argument("newColor", StringArgumentType.string())
+                                                                                .suggests(new SugestionWordTypes(SugestionWordTypes.Type.COLORS))
+                                                                                .then(CommandManager.argument("newStyle", StringArgumentType.string())
+                                                                                        .suggests(new SugestionWordTypes(SugestionWordTypes.Type.STYLES))
+                                                                                        .executes(CustomVanillaAlertsCommands::executeEditWords)
+                                                                                )
+                                                                        )
+                                                                )
                                                         )
                                                 )
                                         )
@@ -83,20 +108,20 @@ public class CustomVanillaAlertsCommands {
                         )
 
                         .then(CommandManager.literal("message")
-                                .then(CommandManager.literal("createMessage")
+                                .then(CommandManager.literal("create")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
                                                 .suggests(new SuggestionMessageType())
                                                 .then(CommandManager.argument("messageId", StringArgumentType.string())
-                                                        .executes(CustomVanillaAlertsCommands::createMessage)
+                                                        .executes(CustomVanillaAlertsCommands::executeCreateMessage)
                                                 )
                                         )
                                 )
-                                .then(CommandManager.literal("deleteMessage")
+                                .then(CommandManager.literal("delete")
                                         .then(CommandManager.argument("messageType", StringArgumentType.string())
                                                 .suggests(new SuggestionMessageType())
                                                 .then(CommandManager.argument("messageId", StringArgumentType.string())
                                                         .suggests(new SuggestionIdConfig())
-                                                        .executes(CustomVanillaAlertsCommands::deleteMessage)
+                                                        .executes(CustomVanillaAlertsCommands::executeDeleteMessage)
                                                 )
                                         )
                                 )
@@ -105,153 +130,107 @@ public class CustomVanillaAlertsCommands {
     }
 
     private static int reload(CommandContext<ServerCommandSource> context) {
-        CustomVanillaAlerts.getConfig().load();
+        Config.getInstance().loadConfig();
         context.getSource().sendFeedback(Text.of("The config was reloaded") , false);
         return 1;
     }
 
     private static int restoreConfig(CommandContext<ServerCommandSource> context) {
-        Config config = CustomVanillaAlerts.getConfig();
-        config.setDefaultConfigValues();
-        config.load();
+        Config.getInstance().restoreDefaultConfig();
         context.getSource().sendFeedback(Text.of("Config restored to default values."), true);
-
         return 1;
     }
 
     private static int changeVisibility(CommandContext<ServerCommandSource> context, String configKey) {
         boolean currentValue = BoolArgumentType.getBool(context , "visibility");
-        switch (configKey.toLowerCase()) {
-            case "death":
-                CustomVanillaAlerts.getConfig().setEnabledDeathMessages(currentValue);
-                break;
-            case "disconnect":
-                CustomVanillaAlerts.getConfig().setEnabledDisconnectMessages(currentValue);
-                break;
-            case "join":
-                CustomVanillaAlerts.getConfig().setEnabledJoinMessages(currentValue);
-                break;
-            default:
-                context.getSource().sendError(Text.of("Invalid config key: " + configKey));
-                return 0;
-        }
+        Config.getInstance().setEnabled(configKey , currentValue);
         context.getSource().sendFeedback(Text.of("The value for " + configKey + " has changed to " + currentValue) , false);
         return 1;
     }
 
-    private static int createMessage(CommandContext<ServerCommandSource> context) {
-        String messageType = StringArgumentType.getString(context, "messageType");
-        String messageId = StringArgumentType.getString(context, "messageId");
-
-        switch (messageType.toLowerCase()) {
-            case "death":
-                CustomVanillaAlerts.getConfig().createDeathMessage(messageId, new ArrayList<>());
-                break;
-            case "disconnect":
-                CustomVanillaAlerts.getConfig().createDisconnectMessage(messageId, new ArrayList<>());
-                break;
-            case "join":
-                CustomVanillaAlerts.getConfig().createJoinMessage(messageId, new ArrayList<>());
-                break;
-            default:
-                context.getSource().sendError(Text.of("Invalid message type: " + messageType));
-                return 0;
-        }
-        context.getSource().sendFeedback(Text.of("Message created with ID " + messageId), false);
-
-        return 1;
-    }
-
-    private static int addWords(CommandContext<ServerCommandSource> context) {
+    private static int executeAddWords(CommandContext<ServerCommandSource> context) {
         String messageType = StringArgumentType.getString(context, "messageType");
         String messageId = StringArgumentType.getString(context, "messageId");
         String content = StringArgumentType.getString(context, "content");
         String color = StringArgumentType.getString(context, "color");
         String style = StringArgumentType.getString(context, "style");
 
-        if (messageType.equalsIgnoreCase("death")) {
-            content = content.replace("reason", "%reason%");
-        }
+        List<String> styles = null;
 
         content = content.replace("player", "%player%");
 
-        List<String> styles = null;
+        if (messageType.equalsIgnoreCase("death")) {
+            content = content.replace("reason", "%reason%");
+        } else if (messageType.equalsIgnoreCase("advancement")) {
+            content = content.replace("advancement", "%advancement%");
+        }
 
         if (!style.equalsIgnoreCase("none")) {
             styles = Collections.singletonList(style);
         }
 
-        Map<String, Object> word = CustomVanillaAlerts.getConfig().createWord(content, color, styles);
+        Config.getInstance().addWordToMessageList(messageType, messageId, content, color, styles);
 
-        switch (messageType.toLowerCase()) {
-            case "death":
-                CustomVanillaAlerts.getConfig().addWordToDeathMessage(messageId, word);
-                break;
-            case "disconnect":
-                CustomVanillaAlerts.getConfig().addWordToDisconnectMessage(messageId, word);
-                break;
-            case "join":
-                CustomVanillaAlerts.getConfig().addWordToJoinMessage(messageId, word);
-                break;
-            default:
-                context.getSource().sendError(Text.of("Invalid message type: " + messageType));
-                return 0;
-        }
-
-        context.getSource().sendFeedback(Text.of("Word added to message " + messageId), false);
+        context.getSource().sendFeedback(Text.of("Word added to message " + messageId + " for type " + messageType), false);
         return 1;
     }
 
-    private static int deleteMessage(CommandContext<ServerCommandSource> context) {
+    private static int executeRemoveWords(CommandContext<ServerCommandSource> context) {
         String messageType = StringArgumentType.getString(context, "messageType");
         String messageId = StringArgumentType.getString(context, "messageId");
 
-        switch (messageType.toLowerCase()) {
-            case "death":
-                CustomVanillaAlerts.getConfig().deleteDeathMessage(messageId);
-                break;
-            case "disconnect":
-                CustomVanillaAlerts.getConfig().deleteDisconnectMessage(messageId);
-                break;
-            case "join":
-                CustomVanillaAlerts.getConfig().deleteJoinMessage(messageId);
-                break;
-            default:
-                context.getSource().sendError(Text.of("Invalid message type: " + messageType));
-                return 0;
-        }
+        int wordIndex = IntegerArgumentType.getInteger(context, "wordIndex");
 
-        context.getSource().sendFeedback(Text.of("Message deleted with ID " + messageId), false);
+        Config.getInstance().removeWord(messageType, messageId, wordIndex);
+        context.getSource().sendFeedback(Text.of("Word removed from message " + messageId + " for type " + messageType), false);
+
         return 1;
     }
 
-    private static int removeWords(CommandContext<ServerCommandSource> context) {
+    private static int executeCreateMessage(CommandContext<ServerCommandSource> context) {
         String messageType = StringArgumentType.getString(context, "messageType");
         String messageId = StringArgumentType.getString(context, "messageId");
-        String contentWord = StringArgumentType.getString(context, "contentWord");
+
+        Config.getInstance().addMessage(messageType, messageId);
+
+        context.getSource().sendFeedback(Text.of("Message created with ID " + messageId + " for type " + messageType), false);
+        return 1;
+    }
+
+    private static int executeEditWords(CommandContext<ServerCommandSource> context) {
+        String messageType = StringArgumentType.getString(context, "messageType");
+        String messageId = StringArgumentType.getString(context, "messageId");
+        int oldWordIndex = IntegerArgumentType.getInteger(context, "oldWordIndex");
+        String newContent = StringArgumentType.getString(context, "newContent");
+        String newColor = StringArgumentType.getString(context, "newColor");
+        String newStyle = StringArgumentType.getString(context, "newStyle");
+
+        newContent = newContent.replace("player", "%player%");
 
         if (messageType.equalsIgnoreCase("death")) {
-            contentWord = contentWord.replace("reason", "%reason%");
+            newContent = newContent.replace("reason", "%reason%");
+        } else if (messageType.equalsIgnoreCase("advancement")) {
+            newContent = newContent.replace("advancement", "%advancement%");
         }
 
-        contentWord = contentWord.replace("player", "%player%");
+        List<String> styles = null;
 
-        switch (messageType.toLowerCase()) {
-            case "death":
-                CustomVanillaAlerts.getConfig().removeWordFromDeathMessage(messageId, contentWord);
-                break;
-            case "disconnect":
-                CustomVanillaAlerts.getConfig().removeWordFromDisconnectMessage(messageId, contentWord);
-                break;
-            case "join":
-                CustomVanillaAlerts.getConfig().removeWordFromJoinMessage(messageId, contentWord);
-                break;
-            default:
-                context.getSource().sendError(Text.of("Invalid message type: " + messageType));
-                return 0;
+        if (!newStyle.equalsIgnoreCase("none")) {
+            styles = Collections.singletonList(newStyle);
         }
 
-        context.getSource().sendFeedback(Text.of("Word '" + contentWord + "' removed from message " + messageId), false);
+        Config.getInstance().editWord(messageType, messageId, oldWordIndex, newContent, newColor, styles);
+
+        context.getSource().sendFeedback(Text.of("Word edited in message " + messageId + " for type " + messageType), false);
+        return 1;
+    }
+    private static int executeDeleteMessage(CommandContext<ServerCommandSource> context) {
+        String messageType = StringArgumentType.getString(context, "messageType");
+        String messageId = StringArgumentType.getString(context, "messageId");
+
+        Config.getInstance().deleteMessage(messageType, messageId);
+
+        context.getSource().sendFeedback(Text.of("Message deleted with ID " + messageId + " for type " + messageType), false);
         return 1;
     }
 }

@@ -1,6 +1,5 @@
 package vowxky.customvanillaalerts.command.suggestion;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
@@ -17,7 +16,7 @@ public class SugestionWordTypes implements SuggestionProvider<ServerCommandSourc
     private final Type suggestionType;
 
     public enum Type {
-        COLORS, STYLES, VARIABLES
+        COLORS, STYLES
     }
 
     public SugestionWordTypes(Type suggestionType) {
@@ -31,8 +30,6 @@ public class SugestionWordTypes implements SuggestionProvider<ServerCommandSourc
                 return suggestColors(builder);
             case STYLES:
                 return suggestStyles(builder);
-            case VARIABLES:
-                return suggestVariables(builder, context);
             default:
                 return Suggestions.empty();
         }
@@ -60,22 +57,10 @@ public class SugestionWordTypes implements SuggestionProvider<ServerCommandSourc
     private CompletableFuture<Suggestions> suggestMatchingStrings(SuggestionsBuilder builder, List<String> suggestions) {
         String remaining = builder.getRemaining().toLowerCase();
 
-        for (String suggestion : suggestions) {
-            if (suggestion.toLowerCase().startsWith(remaining)) {
-                builder.suggest(suggestion);
-            }
-        }
+        suggestions.stream()
+                .filter(suggestion -> suggestion.toLowerCase().startsWith(remaining))
+                .forEach(builder::suggest);
 
         return builder.buildFuture();
-    }
-
-    private CompletableFuture<Suggestions> suggestVariables(SuggestionsBuilder builder, CommandContext<ServerCommandSource> context) {
-        String messageType = StringArgumentType.getString(context, "messageType");
-
-        if ("death".equalsIgnoreCase(messageType)) {
-            return suggestMatchingStrings(builder, Arrays.asList("player", "reason"));
-        }
-
-        return suggestMatchingStrings(builder, List.of("player"));
     }
 }
